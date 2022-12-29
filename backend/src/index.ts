@@ -1,12 +1,31 @@
-import express, { Request, Response } from 'express';
+import { ApolloServer } from "@apollo/server";
+import { startStandaloneServer } from "@apollo/server/standalone";
 
-const app = express();
-const port = process.env.PORT || '8000';
+const typeDefs = `#graphql
+  type Query {
+    hello: String
+  }
+`;
 
-app.get('/',(req: Request, res: Response)=>{
-    res.send("Hello world");
-});
+// Provide resolver functions for your schema fields
+const resolvers = {
+  Query: {
+    hello: () => "Hello world!",
+  },
+};
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+const main = async () => {
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
   });
+  const port = parseInt(process.env.PORT) || 8000;
+
+  const { url } = await startStandaloneServer(server, {
+    listen: { port },
+  });
+
+  console.log(`🚀  Server ready at: ${url}`);
+};
+
+main();
