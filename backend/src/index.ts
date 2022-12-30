@@ -1,23 +1,17 @@
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
-
-const typeDefs = `#graphql
-  type Query {
-    hello: String
-  }
-`;
-
-// Provide resolver functions for your schema fields
-const resolvers = {
-  Query: {
-    hello: () => "Hello world!",
-  },
-};
+import { buildSchema } from "type-graphql";
+import "reflect-metadata";
+import { UserResolver } from "./resolvers/user";
 
 const main = async () => {
+  const schema = await buildSchema({
+    resolvers: [UserResolver],
+    validate: { forbidUnknownValues: false },
+  });
+
   const server = new ApolloServer({
-    typeDefs,
-    resolvers,
+    schema,
   });
   const port = parseInt(process.env.PORT) || 8000;
 
