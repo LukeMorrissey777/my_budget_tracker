@@ -1,5 +1,14 @@
-import { Resolver, Query, Mutation, Arg, InputType, Field } from "type-graphql";
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Arg,
+  InputType,
+  Field,
+  Ctx,
+} from "type-graphql";
 import { User } from "../entities/User";
+import { MyContext } from "../types";
 
 @InputType()
 class RegisterInput {
@@ -18,15 +27,17 @@ export class UserResolver {
     return await this.userCollection;
   }
 
-  @Mutation()
-  register(@Arg("data") newUserData: RegisterInput): User {
-    const user: User = {
-      id: Math.floor(Math.random() * 10000),
+  @Mutation(() => User)
+  async register(
+    @Arg("data") newUserData: RegisterInput,
+    @Ctx() { em }: MyContext
+  ): Promise<User> {
+    const user = em.create(User, {
       username: newUserData.username,
       password: newUserData.password,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
+    await em.persistAndFlush(user);
+
     this.userCollection.push(user);
     return user;
   }
