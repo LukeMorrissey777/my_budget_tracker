@@ -10,9 +10,10 @@ import {
 } from "type-graphql";
 import { User } from "../entities/User";
 import { MyContext } from "../types";
+import bcrypt from "bcrypt";
 
 @InputType()
-class RegisterInput {
+class UsernamePasswordInput {
   @Field()
   username: string;
   @Field()
@@ -40,22 +41,52 @@ export class UserResolver {
 
   @Mutation(() => UserOutput)
   async register(
-    @Arg("data") { username, password }: RegisterInput,
+    @Arg("data") { username, password }: UsernamePasswordInput,
     @Ctx() { req, em }: MyContext
   ): Promise<UserOutput> {
     if (username.length <= 3) {
-      console.log("error");
-      return { error: "Username must be longer than 3 characters", user: null };
+      return { error: "Username must be longer than 3 characters" };
+    }
+
+    if (password.length <= 5) {
+      return { error: "Password must be longer than 5 characters" };
     }
 
     const user = em.create(User, {
       username,
-      password,
+      password: await bcrypt.hash(password, 10),
     });
 
-    await em.persistAndFlush(user);
+    try {
+      await em.persistAndFlush(user);
+    } catch (error) {
+      if (error.code === "23505") {
+        return { error: "A user with that username already exsists" };
+      }
+      // console.error(error);
+    }
+
     req.session.userId = user.id;
 
     return { user };
+  }
+
+  @Mutation(() => UserOutput)
+  async login(
+    @Arg("data") { username, password }: UsernamePasswordInput,
+    @Ctx() { req, em }: MyContext
+  ): Promise<UserOutput> {
+    const user = await em.findOne(User, { username });
+
+    if (!user) {
+      return { error: "No user with that username exsists" };
+    }
+
+    if (await bcrypt.compare(password, user.password)) {
+      req.session.userId = user.id;
+      return { user };
+    }
+
+    return { error: "Incorrect password" };
   }
 }
